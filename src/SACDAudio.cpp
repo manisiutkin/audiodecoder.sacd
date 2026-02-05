@@ -33,6 +33,11 @@ CSACDAudioDecoder::CSACDAudioDecoder(const kodi::addon::IInstanceInfo& instance)
 {
 }
 
+CSACDAudioDecoder::~CSACDAudioDecoder()
+{
+  kodi::Log(ADDON_LOG_INFO, "Unload SACD Audio Decoder plugin", "DSD2PCM");
+}
+
 bool CSACDAudioDecoder::SupportsFile(const std::string& filename)
 {
   int track = 0;
@@ -61,8 +66,9 @@ bool CSACDAudioDecoder::Init(const std::string& filename,
    */
   CSACDSettings::GetInstance().Load();
 
-  m_setting_dBVolumeAdjust = CSACDSettings::GetInstance().GetVolumeAdjust();
-  m_setting_lfeAdjustCoef = CSACDSettings::GetInstance().GetLFEAdjust();
+  m_setting_outputType = CSACDSettings::GetInstance().GetOutputType();
+  m_setting_volAdjust = CSACDSettings::GetInstance().GetVolumeAdjust();
+  m_setting_lfeAdjust = CSACDSettings::GetInstance().GetLFEAdjust();
   m_setting_outSamplerate = CSACDSettings::GetInstance().Samplerate();
 
   /*
@@ -77,79 +83,95 @@ bool CSACDAudioDecoder::Init(const std::string& filename,
     return false;
   }
 
-  m_dsdSamplerate = sacd_reader->get_samplerate(subSong);
-  m_framerate = sacd_reader->get_framerate(subSong);
-  m_pcmOutChannels = sacd_reader->get_channels(subSong);
-  m_dstBufSize = m_dsdBufSize = m_dsdSamplerate / 8 / m_framerate * m_pcmOutChannels;
-  m_dstThreads = std::thread::hardware_concurrency();
-  if (!m_dstThreads)
-    m_dstThreads = 2;
-  m_dsdBuf.resize(m_dstThreads * m_dsdBufSize);
-  m_dstBuf.resize(m_dstThreads * m_dstBufSize);
-  int spkConfig = sacd_reader->get_loudspeaker_config(subSong);
-  m_pcmOutChannelMap = GetSACDChannelMapFromLoudspeakerConfig(spkConfig);
-  if (m_pcmOutChannelMap.empty())
-  {
-    m_pcmOutChannelMap = GetSACDChannelMapFromChannels(m_pcmOutChannels);
-  }
-  m_pcmMinSamplerate = 44100;
-  while ((m_pcmMinSamplerate / m_framerate) * m_framerate != m_pcmMinSamplerate)
-  {
-    m_pcmMinSamplerate *= 2;
-  }
-
-  m_pcmOutSamplerate = std::max(m_pcmMinSamplerate, m_setting_outSamplerate);
-  m_pcmOutMaxSamples = m_pcmOutSamplerate / m_framerate;
-  m_pcmBuffer.resize(m_pcmOutChannels * m_pcmOutMaxSamples);
   memset(m_sacdBitrate, 0, sizeof(m_sacdBitrate));
   m_sacdBitrateIdx = 0;
   m_sacdBitrateSum = 0;
 
-  double* fir_data = nullptr;
-  int fir_size = 0;
-  if (CSACDSettings::GetInstance().GetConverterType() == conv_type_e::USER)
+  m_dsdOutput = (m_setting_outputType == output_type_e::DSD);
+  m_dsdSamplerate = sacd_reader->get_samplerate(subSong);
+  m_framerate = sacd_reader->get_framerate(subSong);
+  m_channels = sacd_reader->get_channels(subSong);
+  int spkConfig = sacd_reader->get_loudspeaker_config(subSong);
+  m_outChannelMap = GetSACDChannelMapFromLoudspeakerConfig(spkConfig);
+  if (m_outChannelMap.empty())
   {
-    std::string path = CSACDSettings::GetInstance().GetConverterFirFile();
-    if (!path.empty() && LoadFir(kodi::addon::GetAddonPath(path)))
-    {
-      fir_data = m_firData.data();
-      fir_size = m_firData.size();
-    }
+    m_outChannelMap = GetSACDChannelMapFromChannels(m_channels);
   }
 
-  m_dsdPCMDecoder = std::make_unique<DSDPCMConverterEngine>();
-  m_dsdPCMDecoder->set_gain(m_setting_dBVolumeAdjust);
-  int rv =
-      m_dsdPCMDecoder->init(m_pcmOutChannels, m_framerate, m_dsdSamplerate, m_pcmOutSamplerate,
-                            CSACDSettings::GetInstance().GetConverterType(),
-                            CSACDSettings::GetInstance().GetConverterFp64(), fir_data, fir_size);
-  if (rv < 0)
+  if (m_dsdOutput)
   {
-    if (rv == -2)
+    kodi::Log(ADDON_LOG_INFO, "Produce DSD stream", "DSD2PCM");
+  }
+  else
+  {
+    m_pcmMinSamplerate = 44100;
+    while ((m_pcmMinSamplerate / m_framerate) * m_framerate != m_pcmMinSamplerate)
     {
-      kodi::Log(ADDON_LOG_ERROR, "No installed FIR, continue with the default", "DSD2PCM");
+      m_pcmMinSamplerate *= 2;
     }
-    int rv = m_dsdPCMDecoder->init(m_pcmOutChannels, m_framerate, m_dsdSamplerate,
-                                   m_pcmOutSamplerate, conv_type_e::DIRECT,
-                                   CSACDSettings::GetInstance().GetConverterFp64(), nullptr, 0);
+
+    m_outSamplerate = std::max(m_pcmMinSamplerate, m_setting_outSamplerate);
+    m_pcmOutMaxSamples = m_outSamplerate / m_framerate;
+    m_pcmBuffer.resize(m_channels * m_pcmOutMaxSamples);
+
+    double* fir_data = nullptr;
+    int fir_size = 0;
+    if (CSACDSettings::GetInstance().GetConverterType() == conv_type_e::USER)
+    {
+      std::string path = CSACDSettings::GetInstance().GetConverterFirFile();
+      if (!path.empty() && LoadFir(kodi::addon::GetAddonPath(path)))
+      {
+        fir_data = m_firData.data();
+        fir_size = m_firData.size();
+      }
+    }
+    m_decimation = m_setting_decimation;
+    if (!m_decimation)
+    {
+      m_decimation = (fir_size < 80) ? 8 : 1 << (int)std::log2(fir_size / 10.0);
+    }
+
+    int rv = m_dsdpcmDecoder.init(m_channels, m_framerate, m_dsdSamplerate, m_outSamplerate,
+                                  CSACDSettings::GetInstance().GetConverterType(),
+                                  CSACDSettings::GetInstance().GetConverterFp64(),
+                                  fir_data, fir_size, m_decimation);
     if (rv < 0)
     {
-      return false;
+      if (rv == -2)
+      {
+        kodi::Log(ADDON_LOG_ERROR, "No installed FIR, continue with the default", "DSD2PCM");
+      }
+      int rv = m_dsdpcmDecoder.init(m_channels, m_framerate, m_dsdSamplerate, m_outSamplerate,
+                                    conv_type_e::DIRECT, CSACDSettings::GetInstance().GetConverterFp64());
+      if (rv < 0)
+      {
+        return false;
+      }
     }
   }
 
+  m_dstDecoder_initialized = false;
   m_readFrame = true;
 
-  /*
+    /*
    * Set values for Kodi
    */
-  channels = m_pcmOutChannels;
-  samplerate = m_pcmOutSamplerate;
-  bitspersample = pcmOutBitsPerSample;
-  bitrate = (int64_t)(m_dsdSamplerate * m_pcmOutChannels) + 500;
+  channels = m_channels;
+  bitrate = (int64_t)(m_dsdSamplerate * m_channels) + 500;
   totaltime = sacd_reader->get_duration(subSong) * 1000;
-  format = AUDIOENGINE_FMT_FLOAT;
-  channellist = m_pcmOutChannelMap;
+  channellist = m_outChannelMap;
+  if (m_dsdOutput)
+  {
+    samplerate = m_dsdSamplerate / 8;
+    bitspersample = 8;
+    format = AUDIOENGINE_FMT_DSD;
+  }
+  else
+  {
+    samplerate = m_outSamplerate;
+    bitspersample = pcmOutBitsPerSample;
+    format = AUDIOENGINE_FMT_FLOAT;
+  }
 
   return true;
 }
@@ -162,13 +184,13 @@ int CSACDAudioDecoder::ReadPCM(uint8_t* buffer, size_t size, size_t& actualsize)
    */
   if (m_bytesLeft > 0)
   {
-    float* currentPtr = m_bytesLeftNextPtr;
+    uint8_t* currentPtr = (uint8_t*)m_bytesLeftNextPtr;
 
     actualsize = m_bytesLeft;
     if (actualsize > size)
     {
       m_bytesLeft = actualsize - size;
-      m_bytesLeftNextPtr = currentPtr + size / sizeof(float);
+      m_bytesLeftNextPtr = currentPtr + size;
       actualsize = size;
     }
     else
@@ -187,11 +209,9 @@ int CSACDAudioDecoder::ReadPCM(uint8_t* buffer, size_t size, size_t& actualsize)
   size_t dsd_size = 0;
   while (m_readFrame)
   {
-    auto slot_nr = m_dstDecoder ? m_dstDecoder->get_slot_nr() : 0;
-    dsd_data = m_dsdBuf.data() + m_dsdBufSize * slot_nr;
-    dsd_size = 0;
-    uint8_t* frame_data = m_dstBuf.data() + m_dstBufSize * slot_nr;
-    size_t frame_size = m_dstBufSize;
+    m_dsxBuf.resize(m_dsdSamplerate / 8 / m_framerate * m_channels);
+    uint8_t* frame_data = m_dsxBuf.data();
+    size_t frame_size = m_dsxBuf.size();
     frame_type_e frame_type;
     m_readFrame = sacd_reader->read_frame(frame_data, &frame_size, &frame_type);
     if (m_readFrame)
@@ -203,17 +223,21 @@ int CSACDAudioDecoder::ReadPCM(uint8_t* buffer, size_t size, size_t& actualsize)
           dsd_size = frame_size;
           break;
         case frame_type_e::DST:
-          if (!m_dstDecoder)
+          if (!m_dstDecoder_initialized)
           {
-            m_dstDecoder = std::make_unique<dst_decoder_t>(m_dstThreads);
-            if (!m_dstDecoder ||
-                m_dstDecoder->init(sacd_reader->get_channels(), sacd_reader->get_samplerate(),
-                                   sacd_reader->get_framerate()) != 0)
+            if (m_dstDecoder.init(m_channels, m_dsdSamplerate / 8 / m_framerate) != 0)
             {
               return AUDIODECODER_READ_ERROR;
             }
+            m_dstDecoder_initialized = true;
           }
-          m_dstDecoder->decode(frame_data, frame_size, &dsd_data, &dsd_size);
+          if (m_dstDecoder_initialized)
+          {
+            m_dsxBuf.resize(frame_size);
+            m_dstDecoder.run(m_dsxBuf);
+          }
+          dsd_data = m_dsxBuf.data();
+          dsd_size = m_dsxBuf.size();
           break;
         default:
           return AUDIODECODER_READ_ERROR;
@@ -230,32 +254,54 @@ int CSACDAudioDecoder::ReadPCM(uint8_t* buffer, size_t size, size_t& actualsize)
   }
   if (!dsd_size)
   {
-    if (m_dstDecoder)
+    if (m_dstDecoder_initialized)
     {
-      m_dstDecoder->decode(nullptr, 0, &dsd_data, &dsd_size);
+      m_dsxBuf.clear();
+      m_dstDecoder.run(m_dsxBuf);
     }
   }
 
-  /*
-   * Convert now the processed data to needed PCM format and give Kodi.
-   */
   if (dsd_size)
   {
-    auto pcm_out_samples =
-        m_dsdPCMDecoder->convert(dsd_data, dsd_size, m_pcmBuffer.data()) / m_pcmOutChannels;
-    AdjustLFE(m_pcmBuffer.data(), pcm_out_samples, m_pcmOutChannels, m_pcmOutChannelMap);
-
-    float* currentPtr = m_pcmBuffer.data();
-
-    actualsize = pcm_out_samples * m_pcmOutChannels * sizeof(float);
-    if (actualsize > size)
+    if (m_dsdOutput)
     {
-      m_bytesLeft = actualsize - size;
-      m_bytesLeftNextPtr = currentPtr + size / sizeof(float);
-      actualsize = size;
-    }
+      /*
+       * Output now the processed data as the DSD stream and give Kodi.
+       */
+      uint8_t* currentPtr = dsd_data;
 
-    memcpy(buffer, currentPtr, actualsize);
+      actualsize = dsd_size;
+      if (actualsize > size)
+      {
+        m_bytesLeft = actualsize - size;
+        m_bytesLeftNextPtr = currentPtr + size;
+        actualsize = size;
+      }
+
+      memcpy(buffer, currentPtr, actualsize);
+    }
+    else
+    {
+      /*
+       * Convert now the processed data to needed PCM format and give Kodi.
+       */
+      auto pcm_out_samples =
+          m_dsdpcmDecoder.convert(dsd_data, dsd_size, m_pcmBuffer.data()) / m_channels;
+      AdjustVolume(m_pcmBuffer.data(), pcm_out_samples, m_channels);
+      AdjustLFE(m_pcmBuffer.data(), pcm_out_samples, m_channels, m_outChannelMap);
+
+      float* currentPtr = m_pcmBuffer.data();
+
+      actualsize = pcm_out_samples * m_channels * sizeof(float);
+      if (actualsize > size)
+      {
+        m_bytesLeft = actualsize - size;
+        m_bytesLeftNextPtr = currentPtr + size / sizeof(float);
+        actualsize = size;
+      }
+
+      memcpy(buffer, currentPtr, actualsize);
+    }
   }
   else
   {
@@ -381,6 +427,17 @@ int CSACDAudioDecoder::TrackCount(const std::string& filename)
   return GetSubsongCount(CSACDSettings::GetInstance().GetAreaAllowFallback());
 }
 
+void CSACDAudioDecoder::AdjustVolume(float* pcm_data, size_t pcm_samples, unsigned channels)
+{
+  for (size_t sample = 0; sample < pcm_samples; sample++)
+  {
+    for (size_t channel = 0; channel < channels; channel++)
+    {
+      pcm_data[sample * channels + channel] *= m_setting_volAdjust;
+    }
+  }
+}
+
 void CSACDAudioDecoder::AdjustLFE(float* pcm_data,
                                   size_t pcm_samples,
                                   unsigned channels,
@@ -389,11 +446,11 @@ void CSACDAudioDecoder::AdjustLFE(float* pcm_data,
   if ((channels >= 4) &&
       std::any_of(channel_config.begin(), channel_config.end(),
                   [](AudioEngineChannel i) { return i == AUDIOENGINE_CH_LFE; }) &&
-      (m_setting_lfeAdjustCoef != 1.0f))
+      (m_setting_lfeAdjust != 1.0f))
   {
     for (size_t sample = 0; sample < pcm_samples; sample++)
     {
-      pcm_data[sample * channels + 3] *= m_setting_lfeAdjustCoef;
+      pcm_data[sample * channels + 3] *= m_setting_lfeAdjust;
     }
   }
 }

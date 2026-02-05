@@ -2,9 +2,28 @@
   <section id="addon">
     <category id="main" label="128">
       <group id="1">
+        <setting id="output-type" type="integer" label="30010" help="30011">
+          <level>0</level>
+          <default>0</default>
+          <constraints>
+            <options>
+              <option label="PCM">0</option>
+              <option label="DSD">1</option>
+            </options>
+          </constraints>
+          <control type="list" format="integer" />
+        </setting>
+
         <setting id="volume-adjust" type="number" label="30020" help="30021">
           <level>0</level>
           <default>0.0</default>
+          <dependencies>
+            <dependency type="enable">
+              <or>
+                <condition setting="output-type" operator="is">0</condition>
+              </or>
+            </dependency>
+          </dependencies>
           <constraints>
             <minimum>0.0</minimum>
             <step>1.0</step>
@@ -18,6 +37,13 @@
         <setting id="lfe-adjust" type="number" label="30022" help="30023">
           <level>0</level>
           <default>0.0</default>
+          <dependencies>
+            <dependency type="enable">
+              <or>
+                <condition setting="output-type" operator="is">0</condition>
+              </or>
+            </dependency>
+          </dependencies>
           <constraints>
             <minimum>-10.0</minimum>
             <step>1.0</step>
@@ -31,6 +57,13 @@
         <setting id="samplerate" type="integer" label="30024" help="30025">
           <level>0</level>
           <default>352800</default>
+          <dependencies>
+            <dependency type="enable">
+              <or>
+                <condition setting="output-type" operator="is">0</condition>
+              </or>
+            </dependency>
+          </dependencies>
           <constraints>
             <options>
               <option label="30042">44100</option>
@@ -45,6 +78,13 @@
         <setting id="dsd2pcm-mode" type="integer" label="30026" help="30027">
           <level>0</level>
           <default>0</default>
+          <dependencies>
+            <dependency type="enable">
+              <or>
+                <condition setting="output-type" operator="is">0</condition>
+              </or>
+            </dependency>
+          </dependencies>
           <constraints>
             <options>
               <option label="30028">0</option>

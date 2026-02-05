@@ -40,7 +40,7 @@ public:
 	~decoder_t();
 	int init(unsigned int channels, unsigned int channel_frame_size);
 	int close();
-	int decode(const uint8_t* dst_data, unsigned int dst_bits, uint8_t* dsd_data);
+	int run(const uint8_t* dst_data, unsigned int dst_bits, uint8_t* dsd_data);
 private:
 	int unpack(const uint8_t* dst_data, uint8_t* dsd_data);
 	int16_t reverse7LSBs(int16_t c);

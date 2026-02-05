@@ -11,14 +11,15 @@
 
 bool CSACDSettings::Load()
 {
-  m_volumeAdjust = kodi::addon::GetSettingFloat("volume-adjust", 0.0f);
+  m_outputType = kodi::addon::GetSettingInt("output-type", 0);
+  m_volAdjust = pow(10.0f, kodi::addon::GetSettingFloat("volume-adjust", 0.0f) / 20.0f);
   m_lfeAdjust = pow(10.0f, kodi::addon::GetSettingFloat("lfe-adjust", 0.0f) / 20.0f);
   m_samplerate = kodi::addon::GetSettingInt("samplerate", 352800);
   m_dsd2pcmMode = kodi::addon::GetSettingInt("dsd2pcm-mode", 0);
   m_dsd2pcmFirFile = kodi::addon::GetSettingString("firconverter", "");
   m_speakerArea = kodi::addon::GetSettingInt("area", 0);
   m_separateMultichannel = kodi::addon::GetSettingBoolean("separate-multichannel", false);
-  m_separateMultichannel = kodi::addon::GetSettingBoolean("area-allow-fallback", true);
+  m_areaAllowFallback = kodi::addon::GetSettingBoolean("area-allow-fallback", true);
 
   return true;
 }
@@ -26,10 +27,15 @@ bool CSACDSettings::Load()
 bool CSACDSettings::SetSetting(const std::string& settingName,
                                const kodi::addon::CSettingValue& settingValue)
 {
-  if (settingName == "volume-adjust")
+  if (settingName == "output-type")
   {
-    if (settingValue.GetFloat() != m_volumeAdjust)
-      m_volumeAdjust = settingValue.GetFloat();
+    if (settingValue.GetInt() != m_outputType)
+      m_outputType = settingValue.GetInt();
+  }
+  else if (settingName == "volume-adjust")
+  {
+    if (settingValue.GetFloat() != m_volAdjust)
+      m_volAdjust = settingValue.GetFloat();
   }
   else if (settingName == "lfe-adjust")
   {

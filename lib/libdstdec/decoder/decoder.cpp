@@ -61,7 +61,7 @@ int decoder_t::close() {
 }
 
 // Decode a complete frame (all channels)
-int decoder_t::decode(const uint8_t* dst_data, unsigned int dst_bits, uint8_t* dsd_data) {
+int decoder_t::run(const uint8_t* dst_data, unsigned int dst_bits, uint8_t* dsd_data) {
 	int     rv = 0;
 	uint8_t ACError;
 

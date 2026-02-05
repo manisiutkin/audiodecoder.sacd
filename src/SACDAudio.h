@@ -7,9 +7,9 @@
 
 #pragma once
 
-#include "../lib/libdsdpcm/DSDPCMConverter.h"
-#include "../lib/libdsdpcm/DSDPCMConverterEngine.h"
-#include "../lib/libdstdec/binding/dst_decoder_mt.h"
+#include "../lib/libdstdec/binding/dst_decoder.h"
+#include "../lib/libdsdpcm/binding/dsdpcm_decoder.h"
+
 #include "Settings.h"
 #include "sacd/sacd_core.h"
 
@@ -24,7 +24,7 @@ class ATTR_DLL_LOCAL CSACDAudioDecoder : public kodi::addon::CInstanceAudioDecod
 {
 public:
   CSACDAudioDecoder(const kodi::addon::IInstanceInfo& instance);
-  virtual ~CSACDAudioDecoder() = default;
+  virtual ~CSACDAudioDecoder();
 
   bool SupportsFile(const std::string& filename) override;
   bool Init(const std::string& filename,
@@ -46,29 +46,30 @@ private:
   std::vector<AudioEngineChannel> GetSACDChannelMapFromChannels(int channels);
   uint32_t GetSubsongCount(bool forceOtherIfEmpty);
   uint32_t GetSubsong(uint32_t p_index);
-  void AdjustLFE(float* pcm_data,
-                 size_t pcm_samples,
-                 unsigned channels,
+  void AdjustVolume(float* pcm_data, size_t pcm_samples, unsigned channels);
+  void AdjustLFE(float* pcm_data, size_t pcm_samples, unsigned channels,
                  const std::vector<AudioEngineChannel>& channel_config);
   bool LoadFir(const std::string& path);
   std::string GetTrackName(const std::string& file, int& track);
   bool IsUsableIconFile(const kodi::vfs::CDirEntry& item, std::string& iconUsed);
 
   // Setting values
-  float m_setting_dBVolumeAdjust = 0.0f;
-  float m_setting_lfeAdjustCoef = 0.0f;
+  output_type_e m_setting_outputType = output_type_e::PCM;
+  float m_setting_volAdjust = 0.0f;
+  float m_setting_lfeAdjust = 0.0f;
   int m_setting_outSamplerate = 44100;
+  int m_setting_decimation = 0;
 
   // Processing parts
-  std::unique_ptr<dst_decoder_t> m_dstDecoder;
-  std::unique_ptr<DSDPCMConverterEngine> m_dsdPCMDecoder;
+  dst_decoder_t m_dstDecoder;
+  bool m_dstDecoder_initialized;
+  std::vector<uint8_t> m_dsxBuf;
 
+  dsdpcm_decoder_t m_dsdpcmDecoder;
+  int m_decimation;
+
+  bool m_dsdOutput;
   int m_dsdSamplerate;
-  std::vector<uint8_t> m_dsdBuf;
-  size_t m_dsdBufSize;
-  std::vector<uint8_t> m_dstBuf;
-  size_t m_dstBufSize;
-  int m_dstThreads;
   int m_framerate;
   bool m_readFrame;
 
@@ -80,10 +81,10 @@ private:
   int m_sacdBitrateIdx;
   int64_t m_sacdBitrateSum;
 
-  // PCM output data
-  int m_pcmOutChannels;
-  std::vector<AudioEngineChannel> m_pcmOutChannelMap;
-  int m_pcmOutSamplerate;
+  // DSD/PCM output data
+  int m_channels;
+  std::vector<AudioEngineChannel> m_outChannelMap;
+  int m_outSamplerate;
   int pcmOutBitsPerSample = 32;
   int m_pcmOutMaxSamples;
   uint64_t m_pcmOutOffset;
@@ -92,5 +93,5 @@ private:
 
   // Data for next call if before was not enough space in buffer.
   size_t m_bytesLeft = 0;
-  float* m_bytesLeftNextPtr = nullptr;
+  void* m_bytesLeftNextPtr = nullptr;
 };

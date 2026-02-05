@@ -44,6 +44,18 @@ msgctxt "#30001"
 msgid "Same as .iso, only with \".sacd\" as extension"
 msgstr ""
 
+#. Settings list selection about output stream type.
+#: resources/settings.xml
+msgctxt "#30010"
+msgid "Output type"
+msgstr ""
+
+#. Help text to list selection setting on id 30010.
+#: resources/settings.xml
+msgctxt "#30011"
+msgid "Select PCM or DSD output type"
+msgstr ""
+
 #. Settings slider to change/adjust main volume about played songs, before given to Kodi.
 #: resources/settings.xml
 msgctxt "#30020"

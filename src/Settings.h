@@ -7,9 +7,15 @@
 
 #pragma once
 
-#include "../lib/libdsdpcm/DSDPCMConverter.h"
+#include "../lib/libdsdpcm/binding/dsdpcm_decoder.h"
 
 #include <kodi/General.h>
+
+enum class output_type_e
+{
+  PCM = 0,
+  DSD = 1
+};
 
 class CSACDSettings
 {
@@ -23,7 +29,8 @@ public:
   bool Load();
   bool SetSetting(const std::string& settingName, const kodi::addon::CSettingValue& settingValue);
 
-  float GetVolumeAdjust() const { return m_volumeAdjust; }
+  output_type_e GetOutputType() const { return static_cast<output_type_e>(m_outputType); }
+  float GetVolumeAdjust() const { return m_volAdjust; }
   float GetLFEAdjust() const { return m_lfeAdjust; }
   int Samplerate() const { return m_samplerate; }
   int GetConverterMode() const { return m_dsd2pcmMode; }
@@ -38,7 +45,8 @@ public:
 private:
   CSACDSettings() = default;
 
-  float m_volumeAdjust = 0.0f;
+  int m_outputType = 0;
+  float m_volAdjust = 0.0f;
   float m_lfeAdjust = 0.0f;
   int m_samplerate = 352800;
   int m_dsd2pcmMode = 0;
