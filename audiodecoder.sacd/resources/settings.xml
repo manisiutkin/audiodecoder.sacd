@@ -7,8 +7,8 @@
           <default>0</default>
           <constraints>
             <options>
-              <option label="PCM">0</option>
-              <option label="DSD">1</option>
+              <option label="30012">0</option>
+              <option label="30013">1</option>
             </options>
           </constraints>
           <control type="list" format="integer" />
@@ -26,7 +26,7 @@
           </dependencies>
           <constraints>
             <minimum>0.0</minimum>
-            <step>1.0</step>
+            <step>0.5</step>
             <maximum>6.0</maximum>
           </constraints>
           <control type="slider" format="number">
@@ -75,7 +75,41 @@
           <control type="list" format="integer" />
         </setting>
 
-        <setting id="dsd2pcm-mode" type="integer" label="30026" help="30027">
+        <setting id="transition" type="number" label="30091" help="30092">
+          <level>1</level>
+          <default>0.0</default>
+          <dependencies>
+            <dependency type="enable">
+              <condition setting="output-type" operator="is">1</condition>
+            </dependency>
+          </dependencies>
+          <constraints>
+            <minimum>0.0</minimum>
+            <step>0.2</step>
+            <maximum>1.0</maximum>
+          </constraints>
+          <control type="slider" format="number">
+            <formatlabel>30090</formatlabel>
+          </control>
+        </setting>
+
+        <setting id="channel-map" type="string" label="30093" help="30094">
+          <level>1</level>
+          <default></default>
+          <constraints>
+            <allowempty>true</allowempty>
+          </constraints>
+          <dependencies>
+            <dependency type="enable">
+              <condition setting="output-type" operator="is">1</condition>
+            </dependency>
+          </dependencies>
+          <control type="edit" format="string">
+            <formatlabel>30095</formatlabel>
+          </control>
+        </setting>
+
+        <setting id="dsdpcm-mode" type="integer" label="30026" help="30027">
           <level>0</level>
           <default>0</default>
           <dependencies>
@@ -103,6 +137,11 @@
           <dependencies>
             <dependency type="enable">
               <or>
+                <condition setting="output-type" operator="is">0</condition>
+              </or>
+            </dependency>
+            <dependency type="enable">
+              <or>
                 <condition setting="dsd2pcm-mode" operator="is">4</condition>
                 <condition setting="dsd2pcm-mode" operator="is">5</condition>
               </or>
@@ -115,6 +154,65 @@
           <control type="button" format="image">
             <heading>30036</heading>
           </control>
+        </setting>
+
+        <setting id="decimation" type="integer" label="30086" help="30087">
+          <level>1</level>
+          <default>0</default>
+          <dependencies>
+            <dependency type="enable">
+              <or>
+                <condition setting="output-type" operator="is">0</condition>
+              </or>
+            </dependency>
+          </dependencies>
+          <constraints>
+            <options>
+              <option label="Auto">0</option>
+              <option label="[8]">8</option>
+              <option label="[16]">16</option>
+              <option label="[32]">32</option>
+              <option label="[64]">64</option>
+              <option label="[128]">128</option>
+              <option label="[256]">256</option>
+              <option label="[512]">512</option>
+              <option label="[1024]">1024</option>
+            </options>
+          </constraints>
+          <control type="list" format="integer" />
+        </setting>
+
+        <setting id="ramp" type="number" label="30088" help="30089">
+          <level>1</level>
+          <default>0.0</default>
+          <dependencies>
+            <dependency type="enable">
+              <or>
+                <condition setting="output-type" operator="is">0</condition>
+              </or>
+            </dependency>
+          </dependencies>
+          <constraints>
+            <minimum>0.0</minimum>
+            <step>0.5</step>
+            <maximum>3.0</maximum>
+          </constraints>
+          <control type="slider" format="number">
+            <formatlabel>30090</formatlabel>
+          </control>
+        </setting>
+
+        <setting id="log-overload" type="boolean" label="30096" help="30097">
+          <level>1</level>
+          <default>false</default>
+          <dependencies>
+            <dependency type="enable">
+              <or>
+                <condition setting="output-type" operator="is">0</condition>
+              </or>
+            </dependency>
+          </dependencies>
+          <control type="toggle" />
         </setting>
 
         <setting id="area" type="integer" label="30037" help="30038">
@@ -153,6 +251,12 @@
               </or>
             </dependency>
           </dependencies>
+          <control type="toggle" />
+        </setting>
+
+        <setting id="edited-master" type="boolean" label="30084" help="30085">
+          <level>0</level>
+          <default>false</default>
           <control type="toggle" />
         </setting>
 

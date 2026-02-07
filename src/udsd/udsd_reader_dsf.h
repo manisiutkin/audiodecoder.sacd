@@ -1,0 +1,70 @@
+/*
+ *  Copyright (C) 2020 Team Kodi <https://kodi.tv>
+ *  Copyright (c) 2011-2026 Maxim V.Anisiutkin <maxim.anisiutkin@gmail.com>
+ *
+ *  SPDX-License-Identifier: GPL-2.0-or-later
+ *  See LICENSE.md for more information.
+ */
+
+/*
+ * Code taken SACD Decoder plugin (from foo_input_sacd) by Team Kodi.
+ * Original author Maxim V.Anisiutkin.
+ */
+
+#pragma once
+
+#include "endianess.h"
+#include "scarletbook.h"
+#include "udsd_reader.h"
+#include "udsd_utility.h"
+#include "id3_tagger.h"
+
+class ATTR_DLL_LOCAL udsd_reader_dsf_t : public udsd_reader_t {
+	udsd_media_t*        m_file;
+	uint32_t             m_mode;
+	int                  m_version;
+	int                  m_samplerate;
+	int                  m_framerate;
+	int                  m_channel_count;
+	uint16_t             m_loudspeaker_config;
+	int64_t              m_file_size;
+	std::vector<uint8_t> m_block_data;
+	int                  m_block_size;
+	int                  m_sample_in_block;
+	int                  m_block_data_end;
+	int64_t              m_sample_count;
+	int64_t              m_data_offset;
+	int64_t              m_data_size;
+	int64_t              m_data_end_offset;
+	int64_t              m_track_start_offset;
+	int64_t              m_track_end_offset;
+	bool                 m_is_lsb;
+	id3_tagger_t         m_id3_tagger;
+	int64_t              m_id3_offset;
+	std::vector<uint8_t> m_id3_data;
+	uint8_t              swap_bits[256];
+public:
+	udsd_reader_dsf_t();
+	~udsd_reader_dsf_t();
+	uint32_t get_track_count(uint32_t mode);
+	uint32_t get_track_number(uint32_t track_index);
+	int get_channels(uint32_t track_number);
+	int get_loudspeaker_config(uint32_t track_number);
+	int get_samplerate(uint32_t track_number);
+	int get_framerate(uint32_t track_number);
+	double get_duration(uint32_t track_number);
+	void set_mode(uint32_t selector, bool is_set);
+	bool open(udsd_media_t* p_file);
+	bool close();
+	bool select_track(uint32_t track_number);
+	std::tuple<bool, size_t, frame_type_e, frame_span_e> read_frame(uint8_t* frame_data, size_t frame_size);
+	bool seek(double seconds);
+	void get_info(uint32_t subsong, kodi::addon::AudioDecoderInfoTag& info);
+	void set_info(uint32_t subsong, const kodi::addon::AudioDecoderInfoTag& info);
+	void get_albumart(uint32_t albumart_id, std::vector<uint8_t>& albumart_data);
+	void set_albumart(uint32_t albumart_id, const std::vector<uint8_t>& albumart_data);
+	void commit();
+private:
+	int64_t get_size();
+	int64_t get_offset();
+};

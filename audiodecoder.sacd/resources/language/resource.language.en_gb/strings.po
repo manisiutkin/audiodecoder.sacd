@@ -56,6 +56,16 @@ msgctxt "#30011"
 msgid "Select PCM or DSD output type"
 msgstr ""
 
+#. Settings list selection about used output types where given to Kodi
+msgctxt "#30012"
+msgid "PCM"
+msgstr ""
+
+#. Settings list selection about used output types where given to Kodi
+msgctxt "#30013"
+msgid "DSD"
+msgstr ""
+
 #. Settings slider to change/adjust main volume about played songs, before given to Kodi.
 #: resources/settings.xml
 msgctxt "#30020"
@@ -240,4 +250,56 @@ msgstr ""
 #: resources/settings.xml
 msgctxt "#30070"
 msgid "{0:.0f} dB"
+msgstr ""
+
+msgctxt "#30084"
+msgid "Edited master playback"
+msgstr ""
+
+msgctxt "#30085"
+msgid "Allow edited master playback"
+msgstr ""
+
+msgctxt "#30086"
+msgid "Decimation"
+msgstr ""
+
+msgctxt "#30087"
+msgid "Select decimation for custom FIR"
+msgstr ""
+
+msgctxt "#30088"
+msgid "Ramp"
+msgstr ""
+
+msgctxt "#30089"
+msgid "Select ramp for converter"
+msgstr ""
+
+msgctxt "#30090"
+msgid "{0:.1f} s"
+msgstr ""
+
+msgctxt "#30091"
+msgid "Transition"
+msgstr ""
+
+msgctxt "#30092"
+msgid "Select transition between DSD and PCM tracks"
+msgstr ""
+
+msgctxt "#30093"
+msgid "Channel map"
+msgstr ""
+
+msgctxt "#30094"
+msgid "Enter channel map for DSD output"
+msgstr ""
+
+msgctxt "#30096"
+msgid "Log overload"
+msgstr ""
+
+msgctxt "#30097"
+msgid "Log overload for DSD to PCM converter"
 msgstr ""
