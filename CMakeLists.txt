@@ -6,7 +6,6 @@ list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR})
 
 find_package(Kodi REQUIRED)
 find_package(Iconv REQUIRED)
-find_package(WavPack REQUIRED)
 
 include_directories(${PROJECT_SOURCE_DIR}/lib/id3v2lib/include
                     ${PROJECT_SOURCE_DIR}/lib/libdsdpcm
