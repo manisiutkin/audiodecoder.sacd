@@ -1,6 +1,6 @@
 /*
 * SACD Decoder plugin
-* Copyright (c) 2011-2025 Maxim V.Anisiutkin <maxim.anisiutkin@gmail.com>
+* Copyright (c) 2011-2026 Maxim V.Anisiutkin <maxim.anisiutkin@gmail.com>
 *
 * This program is free software; you can redistribute it and/or
 * modify it under the terms of the GNU Lesser General Public
@@ -20,6 +20,7 @@
 #pragma once
 
 #include "dsdpcm_filter_setup.h"
+#include <cstdint>
 #include <array>
 #include <vector>
 
