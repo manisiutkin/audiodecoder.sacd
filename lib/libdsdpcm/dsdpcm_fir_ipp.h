@@ -1,6 +1,6 @@
 /*
 * SACD Decoder plugin
-* Copyright (c) 2011-2023 Maxim V.Anisiutkin <maxim.anisiutkin@gmail.com>
+* Copyright (c) 2011-2026 Maxim V.Anisiutkin <maxim.anisiutkin@gmail.com>
 *
 * This program is free software; you can redistribute it and/or
 * modify it under the terms of the GNU Lesser General Public
@@ -95,7 +95,8 @@ public:
 				ippsSum_64f(fir_out, fir_length, &p_pcm_data[sample]);
 			}
 		}
-		ippsCopy_8u(&p_dsd_data[p_dsd_samples - fir_length], fir_dly, fir_length);
+		auto fir_dly_samples = std::min(p_dsd_samples, fir_length);
+		ippsCopy_8u(&p_dsd_data[p_dsd_samples - fir_dly_samples], &fir_dly[fir_length - fir_dly_samples], fir_dly_samples);
 		return pcm_samples;
 	}
 };
