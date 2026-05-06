@@ -1,1 +1,1 @@
-!darwin_embedded !osx
+!darwin_embedded
